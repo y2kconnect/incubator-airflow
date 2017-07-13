@@ -16,11 +16,13 @@ import logging
 import socket
 import six
 
-from flask import Flask
+from flask import Flask, Response
 from flask_admin import Admin, base
 from flask_cache import Cache
 from flask_wtf.csrf import CsrfProtect
 csrf = CsrfProtect()
+
+from werkzeug.datastructures import Headers
 
 import airflow
 from airflow import models
@@ -32,10 +34,38 @@ from airflow import settings
 from airflow import configuration
 
 
+class _CORS_Response(Response):
+    'enable CORS'
+
+    def __init__(self, response=None, **kwargs):
+        headers = kwargs.get('headers', '')
+        origin = ('Access-Control-Allow-Origin', '*')
+        methods = (
+                'Access-Control-Allow-Methods',
+                'HEAD, OPTIONS, GET, POST, DELETE, PUT',
+                )
+        args_01 = (
+                'Access-Control-Allow-Headers',
+                'X-PINGOTHER, Origin, X-Requested-With, Content-Type, Accept, Authorization',
+                )
+        args_02 = ('Access-Control-Max-Age', '1728000')
+        if headers:
+            headers.add(*origin)
+            headers.add(*methods)
+            headers.add(*args_01)
+            headers.add(*args_02)
+        else:
+            headers = Headers([origin, methods, args_01, args_02])
+        kwargs['headers'] = headers
+        return super().__init__(response, **kwargs)
+
+
 def create_app(config=None, testing=False):
     app = Flask(__name__)
     app.secret_key = configuration.get('webserver', 'SECRET_KEY')
     app.config['LOGIN_DISABLED'] = not configuration.getboolean('webserver', 'AUTHENTICATE')
+    if configuration.getboolean('webserver', 'CORS_CONFIG'):
+        app.response_class = _CORS_Response
 
     csrf.init_app(app)
 

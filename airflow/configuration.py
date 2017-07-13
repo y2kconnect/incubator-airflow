@@ -276,6 +276,10 @@ log_fetch_timeout_sec = 5
 # DAGs by default
 hide_paused_dags_by_default = False
 
+# CORS by default
+cors_config = False
+
+
 [email]
 email_backend = airflow.utils.email.send_email_smtp
 

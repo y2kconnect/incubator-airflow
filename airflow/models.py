@@ -492,6 +492,15 @@ class User(Base):
     def is_superuser(self):
         return self.superuser
 
+    def to_json(self):
+        info = {
+                'id': self.id,
+                'username': self.username,
+                'email': self.email,
+                'superuser': self.superuser,
+                }
+        return info
+
 
 class Connection(Base):
     """
@@ -679,6 +688,21 @@ class Connection(Base):
 
         return obj
 
+    def to_json(self):
+        info = {
+                'id': self.id,
+                'conn_id': self.conn_id,
+                'conn_type': self.conn_type,
+                'host': self.host,
+                'schema': self.schedma,
+                'login': self.login,
+                'port': self.port,
+                'is_encrypted': self.is_encrypted,
+                'is_extra_encrypted': self.is_extra_encrypted,
+                'extra': self.extra,
+                }
+        return info
+
 
 class DagPickle(Base):
     """
@@ -704,6 +728,16 @@ class DagPickle(Base):
             dag.template_env = None
         self.pickle_hash = hash(dag)
         self.pickle = dag
+
+    def to_json(self):
+        info = {
+                'id': self.id,
+                'pickle': self.pickle.dag_id,
+                'created_dttm': self.created_dttm.isoformat() if \
+                    self.created_dttm else None,
+                'pickle_hash': self.pickle_hash,
+                }
+        return info
 
 
 class TaskInstance(Base):
@@ -1693,6 +1727,32 @@ class TaskInstance(Base):
         else:
             return pull_fn(task_id=task_ids)
 
+    def to_json(self):
+        info = {
+                'task_id': self.task_id,
+                'dag_id': self.dag_id,
+                'execution_date': self.execution_date.isoformat() if \
+                    self.execution_date else None,
+                'start_date': self.start_date.isoformat() if self.start_date \
+                    else None,
+                'end_date': self.end_date.isoformat() if self.end_date else \
+                    None,
+                'duration': self.duration,
+                'state': self.state,
+                'try_number': self.try_number,
+                'hostname': self.hostname,
+                'unixname': self.unixname,
+                'job_id': self.job_id,
+                'pool': self.pool,
+                'queue': self.queue,
+                'priority_weight': self.priority_weight,
+                'operator': self.operator,
+                'queued_dttm': self.queued_dttm.isoformat() if \
+                    self.queued_dttm else None,
+                'pid': self.pid,
+                }
+        return info
+
 
 class TaskFail(Base):
     """
@@ -1715,6 +1775,20 @@ class TaskFail(Base):
         self.start_date = start_date
         self.end_date = end_date
         self.duration = (self.end_date - self.start_date).total_seconds()
+
+    def to_json(self):
+        info = {
+                'task_id': self.task_id,
+                'dag_id': self.dag_id,
+                'execution_date': self.execution_date.isoformat() if \
+                    self.execution_date else None,
+                'start_date': self.start_date.isoformat() if self.start_date \
+                    else None,
+                'end_date': self.end_date.isoformat() if self.end_date else \
+                    None,
+                'duration': self.duration,
+                }
+        return info
 
 
 class Log(Base):
@@ -1755,6 +1829,20 @@ class Log(Base):
                 self.execution_date = kwargs['execution_date']
 
         self.owner = owner or task_owner
+
+    def to_json(self):
+        info = {
+                'id': self.id,
+                'dttm': self.dttm.isoformat() if self.dttm else None,
+                'dag_id': self.dag_id,
+                'task_id': self.task_id,
+                'event': self.event,
+                'execution_date': self.execution_date.isoformat() if \
+                    self.execution_date else None,
+                'owner': self.owner,
+                'extra': self.extra,
+                }
+        return info
 
 
 @functools.total_ordering
@@ -2518,6 +2606,7 @@ class BaseOperator(object):
             include_prior_dates=include_prior_dates)
 
 
+
 class DagModel(Base):
 
     __tablename__ = "dag"
@@ -2561,6 +2650,27 @@ class DagModel(Base):
         session.commit()
         session.close()
         return obj
+
+    def to_json(self):
+        info = {
+                'dag_id': self.dag_id,
+                'is_paused_at_creation': self.is_paused_at_creation,
+                'is_paused': self.is_paused,
+                'is_subdag': self.is_subdag,
+                'is_active': self.is_active,
+                'last_scheduler_run': self.last_scheduler_run.isoformat() if \
+                    self.last_scheduler_run else None,
+                'last_pickled': self.last_pickled.isoformat() if \
+                    self.last_pickled else None,
+                'last_expired': self.last_expired.isoformat() if \
+                    self.last_expired else None,
+                'scheduler_lock': self.scheduler_lock,
+                'pickle_id': self.pickle_id,
+                'fileloc': self.fileloc,
+                'owners': self.owners,
+                }
+        return info
+
 
 
 @functools.total_ordering
@@ -3527,6 +3637,27 @@ class Chart(Base):
     def __repr__(self):
         return self.label
 
+    def to_json(self):
+        info = {
+                'id': self.id,
+                'label': self.label,
+                'conn_id': self.conn_id,
+                'user_id': self.user_id,
+                'chart_type': self.chart_type,
+                'sql_layout': self.sql_layout,
+                'sql': self.sql,
+                'y_log_scale': self.y_log_scale,
+                'show_datatable': self.show_datatable,
+                'show_sql': self.show_sql,
+                'height': self.height,
+                'default_params': self.default_params,
+                'x_is_date': self.x_is_date,
+                'iteration_no': self.iteration_no,
+                'last_modified': self.last_modified.isoformat() if \
+                    self.last_modified else None,
+                }
+        return info
+
 
 class KnownEventType(Base):
     __tablename__ = "known_event_type"
@@ -3536,6 +3667,13 @@ class KnownEventType(Base):
 
     def __repr__(self):
         return self.know_event_type
+
+    def to_json(self):
+        info = {
+                'id': self.id,
+                'know_event_type': self.know_event_type,
+                }
+        return info
 
 
 class KnownEvent(Base):
@@ -3557,6 +3695,19 @@ class KnownEvent(Base):
 
     def __repr__(self):
         return self.label
+
+    def to_json(self):
+        info = {
+                'id': self.id,
+                'label': self.label,
+                'start_date': self.start_date.isoformat() if self.start_date else None,
+                'end_date': self.end_date.isoformat() if self.end_date else None,
+                'user_id': self.user_id,
+                'known_event_type_id': self.known_event_type_id,
+                'description': self.description,
+                }
+        return info
+
 
 
 class Variable(Base):
@@ -3651,6 +3802,16 @@ class Variable(Base):
         session.query(cls).filter(cls.key == key).delete()
         session.add(Variable(key=key, val=stored_value))
         session.flush()
+
+    def to_json(self):
+        info = {
+                'id': self.id,
+                'key': self.key,
+                'val': self.val,
+                'is_encrypted': self.is_encrypted,
+                }
+        return info
+
 
 
 class XCom(Base):
@@ -3796,6 +3957,21 @@ class XCom(Base):
             session.delete(xcom)
         session.commit()
 
+    def to_json(self):
+        info = {
+                'id': self.id,
+                'key': self.key,
+                'value': self.value,
+                'timestamp': self.timestamp.isoformat() if self.timestamp else \
+                    None,
+                'execution_date': self.execution_date.isformat() if \
+                    self.execution_date else None,
+                'task_id': self.task_id,
+                'dag_id': self.dag_id,
+                }
+        return info
+
+
 
 class DagStat(Base):
     __tablename__ = "dag_stats"
@@ -3912,6 +4088,16 @@ class DagStat(Base):
                     session.rollback()
                     logging.warning("Could not create stat record")
                     logging.exception(e)
+
+    def to_json(self):
+        info = {
+                'dag_id': self.dag_id,
+                'state': self.state,
+                'count': self.count,
+                'dirty': self.dirty,
+                }
+        return info
+
 
 
 class DagRun(Base):
@@ -4272,6 +4458,23 @@ class DagRun(Base):
         )
         return dagruns
 
+    def to_json(self):
+        info = {
+                'id': self.id,
+                'dag_id': self.dag_id,
+                'execution_date': self.execution_date.isoformat() if \
+                    self.execution_date else None,
+                'start_date': self.start_date.isoformat() if self.start_date \
+                    else None,
+                'end_date': self.end_date.isoformat() if self.end_date else \
+                    None,
+                'state': self.state,
+                'run_id': self.run_id,
+                'external_trigger': self.external_trigger,
+                'conf': self.conf,
+                }
+        return info
+
 
 class Pool(Base):
     __tablename__ = "slot_pool"
@@ -4320,6 +4523,16 @@ class Pool(Base):
         queued_slots = self.queued_slots(session=session)
         return self.slots - used_slots - queued_slots
 
+    def to_json(self):
+        info = {
+                'id': self.id,
+                'pool': self.pool,
+                'slots': self.slots,
+                'description': self.description,
+                }
+        return info
+
+
 
 class SlaMiss(Base):
     """
@@ -4341,6 +4554,21 @@ class SlaMiss(Base):
         return str((
             self.dag_id, self.task_id, self.execution_date.isoformat()))
 
+    def to_json(self):
+        info = {
+                'taks_id': self.task_id,
+                'dag_id': self.dag_id,
+                'execution_date': self.execution_date.isoformat() if \
+                    self.execution_date else None,
+                'email_sent': self.email_sent,
+                'timestamp': self.timestamp.isoformat() if self.timestamp \
+                    else None,
+                'description': self.description,
+                'notification_sent': self.notification_sent,
+                }
+        return info
+
+
 
 class ImportError(Base):
     __tablename__ = "import_error"
@@ -4348,3 +4576,15 @@ class ImportError(Base):
     timestamp = Column(DateTime)
     filename = Column(String(1024))
     stacktrace = Column(Text)
+
+    def to_json(self):
+        info = {
+                'id': self.id,
+                'timestamp': self.timestamp.isoformat() if self.timestamp \
+                    else None,
+                'filename': self.filename,
+                'stacktrace': self.stacktrace,
+                }
+        return info
+
+

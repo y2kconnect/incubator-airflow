@@ -689,17 +689,23 @@ class Connection(Base):
         return obj
 
     def to_json(self):
+        extra = self.extra
+        try:
+            if extra:
+                extra = json.loads(extra)
+        except Exception:
+            pass
         info = {
                 'id': self.id,
                 'conn_id': self.conn_id,
                 'conn_type': self.conn_type,
                 'host': self.host,
-                'schema': self.schedma,
+                'schema': self.schema,
                 'login': self.login,
                 'port': self.port,
                 'is_encrypted': self.is_encrypted,
                 'is_extra_encrypted': self.is_extra_encrypted,
-                'extra': self.extra,
+                'extra': extra,
                 }
         return info
 

@@ -3618,6 +3618,18 @@ class DAG(BaseDag, LoggingMixin):
                 qry = qry.filter(TaskInstance.state.in_(states))
         return qry.scalar()
 
+    def to_json(self, execution_date=None):
+        session = settings.Session()
+        qs = session.query(DagRun).filter(DagRun.dag_id == self.dag_id)
+        if execution_date:
+            qs = qs.filter_by(execution_date=execution_date)
+        ret = [
+                obj.to_json()
+                for obj in qs.order_by(DagRun.execution_date.desc())
+                ]
+        return ret
+
+
 
 class Chart(Base):
     __tablename__ = "chart"

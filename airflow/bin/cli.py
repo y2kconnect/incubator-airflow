@@ -46,9 +46,10 @@ from airflow import jobs, settings
 from airflow import configuration as conf
 from airflow.exceptions import AirflowException
 from airflow.executors import DEFAULT_EXECUTOR
-from airflow.models import (DagModel, DagBag, TaskInstance,
-                            DagPickle, DagRun, Variable, DagStat,
-                            Pool, Connection)
+from airflow.models import (
+        Connection, DagBag, DagModel, DagPickle, DagRun, DagStat, Pool,
+        TaskFail, TaskInstance, Variable, 
+        )
 from airflow.ti_deps.dep_context import (DepContext, SCHEDULER_DEPS)
 from airflow.utils import db as db_utils
 from airflow.utils import logging as logging_utils
@@ -754,6 +755,7 @@ def webserver(args):
                 ssl_context=(ssl_cert, ssl_key) if ssl_cert and ssl_key else None)
     else:
         pid, stdout, stderr, log_file = setup_locations("webserver", args.pid, args.stdout, args.stderr, args.log_file)
+        print('pid, stdout, stderr, log_file = {}'.format( (pid, stdout, stderr, log_file) ))
         if args.daemon:
             handle = setup_logging(log_file)
             stdout = open(stdout, 'w+')
@@ -1145,6 +1147,56 @@ def kerberos(args):  # noqa
         stderr.close()
     else:
         airflow.security.kerberos.run()
+
+
+def remove_dag(args, dag=None):
+    try:
+        dag = dag or get_dag(args)
+    except AirflowException:
+        # 已删除目录dags中的python文件
+        dag = None
+
+    session = settings.Session()
+    if dag:
+        dag_id = dag.dag_id
+        f_name = dag.full_filepath
+        qs = session.query(DagModel).filter_by(fileloc=f_name)
+        arr = [orm_dag.dag_id for orm_dag in qs if not dag.is_paused]
+        if arr:
+            msg = 'Please set dag.is_paused = True. dag_ids: {}'.format(arr)
+            print(msg)
+            return
+
+        dag_ids = [orm_dag.dag_id for orm_dag in qs]
+        dagbag = DagBag(process_subdir(args.subdir))
+        for dag_id in dag_ids:
+            dagbag.dags.pop(dag_id)
+        if os.path.exists(f_name):
+            os.remove(f_name)
+    else:
+        dag_ids = [args.dag_id]
+        qs = session.query(DagModel).filter(DagModel.dag_id.in_(dag_ids))
+
+    flag = False
+    pickle_ids = tuple((orm_dag.pickle_id for orm_dag in qs))
+    if pickle_ids:
+        qs = session.query(DagPickle).filter(DagPickle.id.in_(pickle_ids))
+        if session.query(qs.exists()).scalar():
+            flag = True
+            qs.delete(synchronize_session=False)
+    for cls in (DagModel, DagStat, DagRun, TaskInstance, TaskFail):
+        qs = session.query(cls).filter(DagModel.dag_id.in_(dag_ids))
+        if session.query(qs.exists()).scalar():
+            flag = True
+            qs.delete(synchronize_session=False)
+    if flag:
+        session.commit()
+        msg = 'Remove a DAG. dag_id: {}'.format(dag_ids)
+    else:
+        msg = 'Record not found. dag_id: {}'.format(dag_ids)
+    print(msg)
+    session.close()
+
 
 
 Arg = namedtuple(
@@ -1598,6 +1650,10 @@ class CLIFactory(object):
             'help': "List/Add/Delete connections",
             'args': ('list_connections', 'add_connection', 'delete_connection',
                      'conn_id', 'conn_uri', 'conn_extra'),
+        }, {
+            'func': remove_dag,
+            'help': 'Remove a DAG',
+            'args': ('dag_id', 'subdir'),
         },
     )
     subparsers_dict = {sp['func'].__name__: sp for sp in subparsers}
